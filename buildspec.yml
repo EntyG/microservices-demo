@@ -30,6 +30,7 @@ phases:
         set -e
 
         SERVICES=(
+          "adservice: ./src/adservice"
           "frontend:./src/frontend"
           "cartservice:./src/cartservice/src"
           "productcatalogservice:./src/productcatalogservice"
@@ -39,7 +40,6 @@ phases:
           "emailservice:./src/emailservice"
           "checkoutservice:./src/checkoutservice"
           "recommendationservice:./src/recommendationservice"
-          "adservice:./src/adservice"
         )
 
         create_repo_if_not_exists() {
