@@ -1,0 +1,121 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_ACCOUNT_ID: "922364432656"
+    AWS_DEFAULT_REGION: "ap-southeast-2"
+    ECR_PREFIX: "microservices-demo"
+
+phases:
+  pre_build:
+    commands:
+      - echo "========== PRE_BUILD =========="
+      - aws --version
+      - docker --version
+
+      - ECR_REGISTRY="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com"
+      - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
+      - if [ -z "$IMAGE_TAG" ]; then IMAGE_TAG=latest; fi
+
+      - echo "ECR_REGISTRY=$ECR_REGISTRY"
+      - echo "IMAGE_TAG=$IMAGE_TAG"
+
+      - echo "Login to Amazon ECR..."
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+
+  build:
+    commands:
+      - echo "========== BUILD ALL SERVICES =========="
+      - |
+        set -e
+
+        SERVICES=(
+          "frontend:./src/frontend"
+          "cartservice:./src/cartservice/src"
+          "productcatalogservice:./src/productcatalogservice"
+          "currencyservice:./src/currencyservice"
+          "paymentservice:./src/paymentservice"
+          "shippingservice:./src/shippingservice"
+          "emailservice:./src/emailservice"
+          "checkoutservice:./src/checkoutservice"
+          "recommendationservice:./src/recommendationservice"
+          "adservice:./src/adservice"
+        )
+
+        create_repo_if_not_exists() {
+          local repo_name="$1"
+
+          echo "Checking ECR repository: $repo_name"
+
+          aws ecr describe-repositories \
+            --repository-names "$repo_name" \
+            --region "$AWS_DEFAULT_REGION" >/dev/null 2>&1 || \
+          aws ecr create-repository \
+            --repository-name "$repo_name" \
+            --region "$AWS_DEFAULT_REGION" >/dev/null
+        }
+
+        build_push_and_generate_imagedef() {
+          local service="$1"
+          local context="$2"
+
+          local repo_name="$ECR_PREFIX/$service"
+          local image_uri="$ECR_REGISTRY/$repo_name:$IMAGE_TAG"
+          local latest_uri="$ECR_REGISTRY/$repo_name:latest"
+
+          echo "======================================"
+          echo "Service: $service"
+          echo "Context: $context"
+          echo "Image URI: $image_uri"
+          echo "======================================"
+
+          if [ ! -d "$context" ]; then
+            echo "ERROR: build context does not exist: $context"
+            exit 1
+          fi
+
+          create_repo_if_not_exists "$repo_name"
+
+          docker build -t "$service:$IMAGE_TAG" "$context"
+
+          docker tag "$service:$IMAGE_TAG" "$image_uri"
+          docker tag "$service:$IMAGE_TAG" "$latest_uri"
+
+          docker push "$image_uri"
+          docker push "$latest_uri"
+
+          # ECS Deploy Action needs container name + image URI.
+          # Container name must match ECS task definition container name.
+          printf '[{"name":"%s","imageUri":"%s"}]' "microservices-demo-$service" "$image_uri" > "imagedefinitions-$service.json"
+
+          echo "Generated imagedefinitions-$service.json:"
+          cat "imagedefinitions-$service.json"
+          echo
+        }
+
+        for item in "${SERVICES[@]}"; do
+          service="${item%%:*}"
+          context="${item#*:}"
+          build_push_and_generate_imagedef "$service" "$context"
+        done
+
+  post_build:
+    commands:
+      - echo "========== POST_BUILD =========="
+      - echo "Generated image definition files:"
+      - ls -la imagedefinitions-*.json
+      - echo "Build completed on $(date)"
+
+artifacts:
+  files:
+    - imagedefinitions-frontend.json
+    - imagedefinitions-cartservice.json
+    - imagedefinitions-productcatalogservice.json
+    - imagedefinitions-currencyservice.json
+    - imagedefinitions-paymentservice.json
+    - imagedefinitions-shippingservice.json
+    - imagedefinitions-emailservice.json
+    - imagedefinitions-checkoutservice.json
+    - imagedefinitions-recommendationservice.json
+    - imagedefinitions-adservice.json
+  discard-paths: yes

@@ -1,0 +1,26 @@
+ECR_REPO_PREF=microservices-demo/
+AWS_ACCOUNT_ID=922364432656
+AWS_REGION=ap-southeast-2
+NAMESPACE=microservices-demo
+URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+SERVICES=(
+  frontend
+  cartservice
+  productcatalogservice
+  currencyservice
+  paymentservice
+  shippingservice
+  emailservice
+  checkoutservice
+  recommendationservice
+  adservice
+)
+
+  aws ecr describe-repositories \
+    --repository-names $ECR_REPO \
+    --region $AWS_REGION >/dev/null 2>&1 \
+  || aws ecr create-repository \
+    --repository-name $ECR_REPO \
+    --region $AWS_REGION
+
