@@ -30,7 +30,7 @@ phases:
         set -e
 
         SERVICES=(
-          "adservice: ./src/adservice"
+          "adservice:./src/adservice"
           "frontend:./src/frontend"
           "cartservice:./src/cartservice/src"
           "productcatalogservice:./src/productcatalogservice"
