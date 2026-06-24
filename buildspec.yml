@@ -12,6 +12,8 @@ phases:
       - echo "========== PRE_BUILD =========="
       - aws --version
       - docker --version
+      - echo "Login to Docker Hub..."
+      - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
 
       - ECR_REGISTRY="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com"
       - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
