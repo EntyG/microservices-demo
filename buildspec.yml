@@ -86,7 +86,7 @@ phases:
 
           # ECS Deploy Action needs container name + image URI.
           # Container name must match ECS task definition container name.
-          printf '[{"name":"%s","imageUri":"%s"}]' "microservices-demo-$service" "$image_uri" > "imagedefinitions-$service.json"
+          printf '[{"name":"%s","imageUri":"%s"}]' "$service" "$image_uri" > "imagedefinitions-$service.json"
 
           echo "Generated imagedefinitions-$service.json:"
           cat "imagedefinitions-$service.json"
